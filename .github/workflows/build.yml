@@ -1,5 +1,4 @@
 name: "Build Armbian Installer ISO"
-
 on:
   workflow_dispatch:
     inputs:
@@ -15,33 +14,46 @@ on:
 
 jobs:
   build-release:
-    runs-on: ubuntu-26.04
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
     env:
       VERSION_TYPE: ${{ github.event.inputs.version_type }}
-
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Build Image
         run: ./build.sh
 
+      - name: Debug - 查看output原始文件
+        run: |
+          pwd
+          ls -la ./output/
+
       - name: "Prepare Release Assets"
         run: |
-          # 根据版本类型重命名ISO文件
-          if [ "$VERSION_TYPE" = "debian13_minimal" ]; then
-            mv output/armbian-installer-x86_64-standard.iso output/armbian-installer-x86_64-debian12_minimal.iso
+          SRC_ISO="output/armbian-installer-x86_64-standard.iso"
+          if [ ! -f "$SRC_ISO" ]; then
+            echo "❌ 源ISO不存在：$SRC_ISO"
+            exit 1
           fi
 
-          if [ "$VERSION_TYPE" = "ubuntu26_minimal" ]; then
-            mv output/armbian-installer-x86_64-standard.iso output/armbian-installer-x86_64-ubuntu24_minimal.iso
+          if [ "$VERSION_TYPE" = "debian13_minimal" ]; then
+            mv "$SRC_ISO" output/armbian-installer-x86_64-debian13_minimal.iso
+          elif [ "$VERSION_TYPE" = "ubuntu26_minimal" ]; then
+            mv "$SRC_ISO" output/armbian-installer-x86_64-ubuntu26_minimal.iso
           fi
-          
+          # standard 不做重命名，保留原名
+
+          echo "✅ 重命名完成，output目录："
+          ls -la ./output/
 
       - name: "Publish"
-        uses: softprops/action-gh-release@v2.2.1
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: "Armbian-Installer-x86_64-ISO"
           body_path: ${{ github.workspace }}/info.md
           files: |
             output/armbian-installer-x86_64-${{ github.event.inputs.version_type }}.iso
-          token: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
