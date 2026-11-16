@@ -1,59 +1,57 @@
-name: "Build Custom OpenWrt Installer ISO"
-
+name: "Build Armbian Installer ISO"
 on:
   workflow_dispatch:
     inputs:
-      download_url:
-        description: '请输入下载地址(扩展名 .img.gz/.img.xz/.img.zip)'
+      version_type:
+        description: "版本类型"
         required: true
-        default: 'https://default.example.com/file.img.gz'
+        default: "standard"
+        type: choice
+        options:
+          - "standard"
+          - "debian13_minimal"
+          - "ubuntu26_minimal"
 
 jobs:
   build-release:
-    name: "Build and Release"
-    runs-on: "ubuntu-22.04"
+    runs-on: ubuntu-22.04
     permissions:
       contents: write
-
+    env:
+      VERSION_TYPE: ${{ github.event.inputs.version_type }}
     steps:
-      - name: "Checking out git repository"
-        uses: actions/checkout@v5
+      - uses: actions/checkout@v5
 
-      - name: Set executable permissions
-        run: |
-          chmod +x "${{ github.workspace }}/custom.sh"
-          chmod +x "${{ github.workspace }}/supportFiles/custom/build.sh"
+      - name: Build Image
+        run: ./build.sh
 
-      - name: Validate Download URL
+      - name: Debug - 查看output原始文件
         run: |
-          DEFAULT_URL="https://default.example.com/file.img.gz"
-          USER_INPUT_URL="${{ github.event.inputs.download_url }}"
-          
-          if [[ "$USER_INPUT_URL" == "$DEFAULT_URL" ]]; then
-            echo "❌ 错误：请修改默认下载地址！当前地址为无效占位符。"
-            exit 1
-          fi
-          
-          if [[ ! "$USER_INPUT_URL" =~ ^https?://.+\.[gG][zZ]$|^https?://.+\.[xX][zZ]$|^https?://.+\.[zZ][iI][pP]$ ]]; then
-            echo "❌ 错误：地址需以 http(s) 开头且扩展名为 .gz/.xz/.zip"
-            echo "当前输入：$USER_INPUT_URL"
+          pwd
+          ls -la ./output/
+
+      - name: "Prepare Release Assets"
+        run: |
+          SRC_ISO="output/armbian-installer-x86_64-standard.iso"
+          if [ ! -f "$SRC_ISO" ]; then
+            echo "❌ 源ISO不存在：$SRC_ISO"
             exit 1
           fi
 
-      - name: "Build Image"
-        run: |
-          download_url="${{ github.event.inputs.download_url }}"
-          ./custom.sh "$download_url"
-
-      - name: Debug - List output folder
-        run: ls -la ./output/
+          if [ "$VERSION_TYPE" = "debian13_minimal" ]; then
+            mv "$SRC_ISO" output/armbian-installer-x86_64-debian13_minimal.iso
+          elif [ "$VERSION_TYPE" = "ubuntu26_minimal" ]; then
+            mv "$SRC_ISO" output/armbian-installer-x86_64-ubuntu26_minimal.iso
+          fi
+          echo "✅ 重命名完成，output目录："
+          ls -la ./output/
 
       - name: "Publish"
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: "Custom-Installer-x86_64-ISO"
-          body_path: "${{ github.workspace }}/supportFiles/custom/info.md"
-          files: |
-            output/custom-installer-x86_64.iso
+          tag_name: "Armbian-Installer-x86_64-${{ github.sha }}"
+          name: "Armbian Installer ${{ github.event.inputs.version_type }}"
+          body_path: ${{ github.workspace }}/info.md
+          files: output/*.iso
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
