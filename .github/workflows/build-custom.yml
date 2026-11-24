@@ -43,15 +43,18 @@ jobs:
           elif [ "$VERSION_TYPE" = "ubuntu26_minimal" ]; then
             mv "$SRC_ISO" output/armbian-installer-x86_64-ubuntu26_minimal.iso
           fi
+          # 修复权限，避免后续操作报group错误
+          chmod 644 output/*.iso
           echo "✅ 重命名完成，output目录："
           ls -la ./output/
 
-      - name: Compress ISO with xz
+      - name: Split ISO into 1900M chunks
         run: |
           cd output
           for f in *.iso; do
-            xz -9 "$f"
+            split -b 1900M --numeric-suffixes=1 "$f" "${f}.part-"
           done
+          rm -f *.iso
           ls -lh .
 
       - name: "Publish Release"
@@ -60,7 +63,7 @@ jobs:
           tag_name: "Armbian-Installer-x86_64-${{ github.sha }}"
           name: "Armbian Installer ${{ github.event.inputs.version_type }}"
           body_path: ${{ github.workspace }}/info.md
-          files: output/*.iso.xz
+          files: output/*.part-*
           draft: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
