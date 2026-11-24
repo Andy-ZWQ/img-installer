@@ -46,12 +46,21 @@ jobs:
           echo "✅ 重命名完成，output目录："
           ls -la ./output/
 
-      - name: "Publish"
+      - name: Compress ISO with xz
+        run: |
+          cd output
+          for f in *.iso; do
+            xz -9 "$f"
+          done
+          ls -lh .
+
+      - name: "Publish Release"
         uses: softprops/action-gh-release@v2
         with:
           tag_name: "Armbian-Installer-x86_64-${{ github.sha }}"
           name: "Armbian Installer ${{ github.event.inputs.version_type }}"
           body_path: ${{ github.workspace }}/info.md
-          files: output/*.iso
+          files: output/*.iso.xz
+          draft: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
