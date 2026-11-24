@@ -10,7 +10,7 @@ BASE_URL="https://armbian.lv.auroradev.org/dl/uefi-x86/archive/"
 if [ "$VERSION_TYPE" = "debian13_minimal" ]; then
     echo "构建debian13_minimal-armbian..."
     FILE_NAME="Armbian_26.8.3_Uefi-x86_trixie_current_6.18.45_minimal.img.xz"
-elif [ "$VERSION_TYPE" = "ubuntu24_minimal" ]; then
+elif [ "$VERSION_TYPE" = "ubuntu26_minimal" ]; then
     echo "构建ubuntu26_minimal-armbian..."
     FILE_NAME="Armbian_26.8.3_Uefi-x86_resolute_current_6.18.45_minimal.img.xz"
 else
